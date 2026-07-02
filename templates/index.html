@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Volatility Forecasting Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f2f6;
+            padding: 20px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 28px;
+        }
+
+        .header p {
+            color: #aaa;
+            margin-top: 5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .card .value {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+
+        .card .sub {
+            font-size: 12px;
+            color: #888;
+        }
+
+        .regime-badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .risk-low {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .risk-normal {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .risk-high {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .risk-crisis {
+            background: #dc3545;
+            color: white;
+        }
+
+        .signal-up {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .signal-down {
+            color: #dc3545;
+            font-weight: bold;
+        }
+
+        .signal-hold {
+            color: #fd7e14;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        th {
+            background: #1a1a2e;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .refresh-btn {
+            background: #1a1a2e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            float: right;
+        }
+
+        .refresh-btn:hover {
+            background: #2a2a4e;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #888;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+
+        /* Add this to your <style> section - FIXES ELONGATION */
+
+        /* Chart card container */
+        .card-chart {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            min-height: 320px;
+            max-height: 350px;
+        }
+
+        .card-chart h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+
+        /* Chart wrapper - CRITICAL: fixed height */
+        .chart-wrapper {
+            position: relative;
+            height: 250px !important;
+            width: 100% !important;
+            flex: 1;
+            min-height: 200px;
+            max-height: 280px;
+        }
+
+        .chart-wrapper canvas {
+            width: 100% !important;
+            height: 100% !important;
+            max-height: 280px !important;
+        }
+
+        /* Grid for charts - FIXED width */
+        .grid-charts {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .grid-charts {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-wrapper {
+                height: 220px !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1> Volatility Forecasting Dashboard</h1>
+        <p>Real-time volatility predictions and position sizing recommendations</p>
+        <span id="lastUpdate" style="float:right; color:#888; font-size:12px;">Updating...</span>
+    </div>
+
+    <!-- Market Regime -->
+    <div class="grid" id="regimeCard">
+        <div class="card"
+            style="grid-column: 1 / -1; background: linear-gradient(135deg, #1a1a2e, #16213e); color: white;">
+            <h3 style="color: #aaa;"> MARKET REGIME</h3>
+            <div id="regimeDisplay">
+                <span style="font-size: 20px; font-weight: bold;" id="regimeName">Loading...</span>
+                <span id="regimeDesc" style="color: #aaa; margin-left: 10px;"></span>
+                <div style="margin-top: 10px;">
+                    <span id="regimeAction" style="background: #333; padding: 5px 15px; border-radius: 20px;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Table -->
+    <div style="background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px;">
+        <h3>📊 Asset Overview</h3>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Price</th>
+                        <th>Current Vol</th>
+                        <th>Avg Vol</th>
+                        <th>Forecast</th>
+                        <th>Position</th>
+                        <th>Regime</th>
+                        <th>Signal</th>
+                    </tr>
+                </thead>
+                <tbody id="assetTable">
+                    <tr>
+                        <td colspan="8" style="text-align:center;">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <!-- Charts Row - FIXED -->
+    <div class="grid-charts">
+        <div class="card-chart">
+            <h3> Volatility Comparison</h3>
+            <div class="chart-wrapper">
+                <canvas id="volChart"></canvas>
+            </div>
+        </div>
+        <div class="card-chart">
+            <h3> Position Sizing</h3>
+            <div class="chart-wrapper">
+                <canvas id="positionChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <!-- Add this after the charts section in index.html -->
+
+    <div class="card" style="grid-column: 1 / -1;">
+        <h3> Historical Volatility Timeline</h3>
+        <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-size: 13px; font-weight: bold;">Asset:</label>
+                <select id="timelineAsset" style="padding: 5px 10px; border-radius: 5px; border: 1px solid #ddd;">
+                    <option value="SPY">SPY</option>
+                    <option value="QQQ">QQQ</option>
+                    <option value="TLT">TLT</option>
+                    <option value="GLD">GLD</option>
+                    <option value="USO">USO</option>
+                </select>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 5px;">
+                <label style="font-size: 13px; font-weight: bold;">Period:</label>
+                <select id="timelinePeriod" style="padding: 5px 10px; border-radius: 5px; border: 1px solid #ddd;">
+                    <option value="1m">1 Month</option>
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                    <option value="1y" selected>1 Year</option>
+                    <option value="2y">2 Years</option>
+                    <option value="5y">5 Years</option>
+                </select>
+            </div>
+
+            <button onclick="updateTimeline()"
+                style="background:#1a1a2e; color:white; border:none; padding:6px 20px; border-radius:5px; cursor:pointer;">
+                🔄 Update
+            </button>
+
+            <span id="dataPoints" style="font-size: 12px; color: #888; margin-left: auto;"></span>
+        </div>
+
+        <div class="chart-wrapper">
+            <canvas id="timelineChart"></canvas>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; gap: 15px; flex-wrap: wrap; font-size: 12px;">
+            <span><span
+                    style="display:inline-block; width:12px; height:12px; background:#2ecc71; border-radius:3px;"></span>
+                Low (<12%) - Increase</span>
+                    <span><span
+                            style="display:inline-block; width:12px; height:12px; background:#f1c40f; border-radius:3px;"></span>
+                        Normal (12-18%) - Hold</span>
+                    <span><span
+                            style="display:inline-block; width:12px; height:12px; background:#e67e22; border-radius:3px;"></span>
+                        High (18-25%) - Reduce</span>
+                    <span><span
+                            style="display:inline-block; width:12px; height:12px; background:#e74c3c; border-radius:3px;"></span>
+                        Crisis (>25%) - Exit</span>
+        </div>
+    </div>
+    <script>
+        // ============================================
+        // COMPLETE DASHBOARD JAVASCRIPT - FIXED ORDER
+        // ============================================
+
+        // ============================================
+        // 1. CHART INSTANCES (Global variables)
+        // ============================================
+        let volChart = null;
+        let posChart = null;
+        let timelineChart = null;
+
+        // ============================================
+        // 2. FUNCTION DEFINITIONS (Define FIRST)
+        // ============================================
+
+        // 2a. Update Dashboard Function
+        async function updateDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+
+                // Update table
+                const tableBody = document.getElementById('assetTable');
+                let html = '';
+
+                for (const [ticker, asset] of Object.entries(data)) {
+                    const volPct = (asset.vol_20 * 100).toFixed(1);
+                    const avgPct = (asset.avg_vol * 100).toFixed(1);
+                    const predPct = (asset.predicted_vol * 100).toFixed(1);
+                    const posSize = asset.position_size.toFixed(2);
+
+                    const signalClass = asset.signal.includes('INCREASE') ? 'signal-up' :
+                        asset.signal.includes('REDUCE') ? 'signal-down' : 'signal-hold';
+
+                    const regimeClass = asset.regime === 'Low Vol' ? 'risk-low' :
+                        asset.regime === 'High Vol' ? 'risk-high' : 'risk-normal';
+
+                    html += `
+                <tr>
+                    <td><strong>${ticker}</strong><br><span style="font-size:11px;color:#888;">${asset.name}</span></td>
+                    <td>$${asset.price.toFixed(2)}</td>
+                    <td>${volPct}%</td>
+                    <td>${avgPct}%</td>
+                    <td><strong>${predPct}%</strong></td>
+                    <td>${posSize}x</td>
+                    <td><span class="regime-badge ${regimeClass}">${asset.regime}</span></td>
+                    <td><span class="${signalClass}">${asset.signal}</span></td>
+                </tr>
+            `;
+                }
+                tableBody.innerHTML = html;
+
+                // Update charts
+                updateCharts(data);
+
+                // Update regime
+                updateRegime();
+
+                // Update timestamp
+                const updateEl = document.getElementById('lastUpdate');
+                if (updateEl) {
+                    updateEl.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                }
+
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                const updateEl = document.getElementById('lastUpdate');
+                if (updateEl) {
+                    updateEl.textContent = '⚠️ Error updating data';
+                }
+            }
+        }
+
+        // 2b. Update Charts Function
+        function updateCharts(data) {
+            const tickers = Object.keys(data);
+            const vols = tickers.map(t => data[t].vol_20 * 100);
+            const preds = tickers.map(t => data[t].predicted_vol * 100);
+            const positions = tickers.map(t => data[t].position_size);
+            const colors = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6'];
+
+            // ============================================
+            // VOLATILITY CHART - FIXED
+            // ============================================
+            const volCanvas = document.getElementById('volChart');
+            if (volCanvas) {
+                // Destroy old chart
+                if (volChart) {
+                    volChart.destroy();
+                    volChart = null;
+                }
+
+                // Force canvas to proper size
+                volCanvas.style.width = '100%';
+                volCanvas.style.height = '100%';
+                volCanvas.style.maxHeight = '250px';
+
+                const volCtx = volCanvas.getContext('2d');
+                volChart = new Chart(volCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: tickers,
+                        datasets: [
+                            {
+                                label: 'Current Volatility',
+                                data: vols,
+                                backgroundColor: colors.map(c => c + '80'),
+                                borderColor: colors,
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Forecasted Volatility',
+                                data: preds,
+                                backgroundColor: colors.map(c => c + '40'),
+                                borderColor: colors,
+                                borderWidth: 2,
+                                borderDash: [5, 5]
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,  // CRITICAL: Stops elongation
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { boxWidth: 12, padding: 10, font: { size: 11 } }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Volatility (%)', font: { size: 11 } },
+                                max: Math.max(30, ...vols, ...preds) * 1.2 || 50
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // Force update
+                volChart.update();
+            }
+
+            // ============================================
+            // POSITION CHART - FIXED
+            // ============================================
+            const posCanvas = document.getElementById('positionChart');
+            if (posCanvas) {
+                // Destroy old chart
+                if (posChart) {
+                    posChart.destroy();
+                    posChart = null;
+                }
+
+                // Force canvas to proper size
+                posCanvas.style.width = '100%';
+                posCanvas.style.height = '100%';
+                posCanvas.style.maxHeight = '250px';
+
+                const posCtx = posCanvas.getContext('2d');
+                posChart = new Chart(posCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: tickers,
+                        datasets: [{
+                            label: 'Position Size',
+                            data: positions,
+                            backgroundColor: positions.map(p => p > 1.2 ? '#27ae60' : p < 0.8 ? '#e74c3c' : '#f39c12'),
+                            borderColor: '#2c3e50',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,  // CRITICAL: Stops elongation
+                        plugins: {
+                            legend: { display: false }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 2.5,
+                                title: { display: true, text: 'Position Size (x)', font: { size: 11 } }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
+                        }
+                    }
+                });
+
+                // Force update
+                posChart.update();
+            }
+        }
+        // 2c. Update Regime Function
+        async function updateRegime() {
+            try {
+                const response = await fetch('/api/regime');
+                const regime = await response.json();
+
+                const nameEl = document.getElementById('regimeName');
+                const descEl = document.getElementById('regimeDesc');
+                const actionEl = document.getElementById('regimeAction');
+
+                if (nameEl) nameEl.textContent = regime.regime;
+                if (descEl) descEl.textContent = regime.description;
+                if (actionEl) {
+                    actionEl.textContent = regime.action;
+                    actionEl.style.background = regime.color;
+                    actionEl.style.color = 'white';
+                }
+
+            } catch (error) {
+                console.error('Error fetching regime:', error);
+            }
+        }
+
+        // 2d. Update Timeline Function
+        async function updateTimeline() {
+            const assetSelect = document.getElementById('timelineAsset');
+            const periodSelect = document.getElementById('timelinePeriod');
+            const dataPointsEl = document.getElementById('dataPoints');
+
+            if (!assetSelect || !periodSelect) return;
+
+            const ticker = assetSelect.value;
+            const period = periodSelect.value;
+
+            if (dataPointsEl) dataPointsEl.textContent = '⏳ Loading...';
+
+            try {
+                const response = await fetch(`/api/history/${ticker}?period=${period}`);
+                const data = await response.json();
+
+                if (data.status === 'error') {
+                    if (dataPointsEl) dataPointsEl.textContent = '❌ ' + data.message;
+                    return;
+                }
+
+                const dates = data.dates;
+                const prices = data.prices;
+                const volatility = [];
+                const colors = [];
+
+                // Calculate 20-day rolling volatility
+                for (let i = 0; i < prices.length; i++) {
+                    if (i < 20) {
+                        volatility.push(null);
+                        colors.push('rgba(200,200,200,0.3)');
+                        continue;
+                    }
+                    const slice = prices.slice(i - 20, i);
+                    const returns_slice = [];
+                    for (let j = 1; j < slice.length; j++) {
+                        returns_slice.push((slice[j] - slice[j - 1]) / slice[j - 1]);
+                    }
+                    const std = Math.sqrt(returns_slice.reduce((s, r) => s + r * r, 0) / (returns_slice.length - 1));
+                    const ann_vol = std * Math.sqrt(252) * 100;
+                    volatility.push(ann_vol);
+
+                    if (ann_vol < 12) colors.push('rgba(46,204,113,0.7)');
+                    else if (ann_vol < 18) colors.push('rgba(241,196,15,0.7)');
+                    else if (ann_vol < 25) colors.push('rgba(230,126,34,0.7)');
+                    else colors.push('rgba(231,76,60,0.7)');
+                }
+
+                // Destroy old chart
+                if (timelineChart) {
+                    timelineChart.destroy();
+                    timelineChart = null;
+                }
+
+                // Create new chart
+                const canvas = document.getElementById('timelineChart');
+                if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    timelineChart = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels: dates,
+                            datasets: [{
+                                label: 'Volatility (%)',
+                                data: volatility,
+                                backgroundColor: colors,
+                                borderColor: 'rgba(0,0,0,0.1)',
+                                borderWidth: 1
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            animation: { duration: 0 },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            const vol = context.raw;
+                                            if (vol === null) return 'No data';
+                                            let label = `Volatility: ${vol.toFixed(1)}%`;
+                                            if (vol < 12) label += ' 🟢 Low';
+                                            else if (vol < 18) label += ' 🟠 Normal';
+                                            else if (vol < 25) label += ' 🔴 High';
+                                            else label += ' ⚠️ Crisis';
+                                            return label;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                x: {
+                                    ticks: { maxTicksLimit: 20, autoSkip: true },
+                                    title: { display: true, text: 'Date' }
+                                },
+                                y: {
+                                    beginAtZero: true,
+                                    title: { display: true, text: 'Volatility (%)' }
+                                }
+                            }
+                        }
+                    });
+
+                    if (dataPointsEl) dataPointsEl.textContent = `📊 ${dates.length} days`;
+                    console.log(`✅ Timeline updated: ${ticker} (${period}) - ${dates.length} data points`);
+                }
+
+            } catch (error) {
+                console.error('Error updating timeline:', error);
+                if (dataPointsEl) dataPointsEl.textContent = '❌ Error loading data';
+            }
+        }
+
+        // ============================================
+        // 3. INITIALIZATION (Run AFTER all functions are defined)
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function () {
+            console.log('🔄 Initializing dashboard...');
+
+            // Load main dashboard
+            updateDashboard();
+
+            // Load timeline after small delay
+            setTimeout(updateTimeline, 500);
+
+            // Set up auto-refresh every 60 seconds
+            setInterval(updateDashboard, 60000);
+
+            // Set up event listeners for timeline dropdowns
+            const assetSelect = document.getElementById('timelineAsset');
+            const periodSelect = document.getElementById('timelinePeriod');
+            const updateBtn = document.querySelector('[onclick="updateTimeline()"]');
+
+            if (assetSelect) {
+                assetSelect.addEventListener('change', function () {
+                    setTimeout(updateTimeline, 100);
+                });
+            }
+
+            if (periodSelect) {
+                periodSelect.addEventListener('change', function () {
+                    setTimeout(updateTimeline, 100);
+                });
+            }
+
+            if (updateBtn) {
+                updateBtn.removeEventListener('click', updateTimeline);
+                updateBtn.addEventListener('click', updateTimeline);
+            }
+
+            console.log('✅ Dashboard initialized successfully');
+        });
+    </script>
+
+    <div class="last-updated">
+        🔄 Dashboard auto-refreshes every 60 seconds
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
+</body>
+
+</html>
