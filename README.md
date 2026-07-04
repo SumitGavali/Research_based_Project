@@ -9,6 +9,8 @@
 
 ---
 
+RESEARCH PAPER:- [SSRN_Research_Paper_Volatility_Forecasting.pdf](https://github.com/user-attachments/files/29657485/SSRN_Research_Paper_Volatility_Forecasting.pdf)
+
 
 
 ##  Overview
